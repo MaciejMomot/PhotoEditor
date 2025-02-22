@@ -1,0 +1,212 @@
+import customtkinter as ctk
+from tkinter import filedialog
+import numpy as np
+from PIL import Image
+
+class ImageProcessorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Edytor Obrazów")
+        self.root.geometry("800x450")
+
+        ctk.set_appearance_mode("dark")  
+        ctk.set_default_color_theme("blue")
+
+        self.image = None
+        self.processed_image = None
+        self.current_effect = None  
+        
+
+        self.main_frame = ctk.CTkFrame(root)
+        self.main_frame.pack(pady=10, padx=10, fill="both", expand=True)
+
+        self.left_frame = ctk.CTkFrame(self.main_frame, width=400, height=400)
+        self.left_frame.pack(side="left", padx=10, pady=10, expand=True)
+        self.middle_frame = ctk.CTkFrame(self.main_frame, width=400, height=400)
+        self.middle_frame.pack(side="left", padx=10, pady=10, expand=True)
+        self.right_frame = ctk.CTkFrame(self.main_frame, width=400, height=400)
+        self.right_frame.pack(side="left", padx=10, pady=10, expand=True)
+
+        self.left_label = ctk.CTkLabel(self.left_frame, text="Oryginalne zdjęcie")
+        self.left_label.pack(pady=10)
+        self.middle_label = ctk.CTkLabel(self.middle_frame, text="Zdjęcie po obróbce")
+        self.middle_label.pack(pady=10)
+        
+        self.right_label = ctk.CTkLabel(self.right_frame, text="Wykresy TODO")
+        self.right_label.pack(pady=10)
+        
+        self.left_frame.pack_propagate(False)
+        self.middle_frame.pack_propagate(False)
+        self.right_frame.pack_propagate(False)
+
+        self.button_frame = ctk.CTkFrame(root)
+        self.button_frame.pack(pady=10)
+
+        self.load_button = ctk.CTkButton(self.button_frame, text="Otwórz obraz", command=self.load_image)
+        self.load_button.pack(side="left", padx=5)
+
+        self.save_button = ctk.CTkButton(self.button_frame, text="Zapisz", command=self.save_image)
+        self.save_button.pack(side="left", padx=5)
+
+        self.filter_menu = ctk.CTkOptionMenu(self.button_frame, values=["Szarość", "Negatyw", "Binaryzacja"],
+                                             command=self.apply_pixels_filter)
+        self.filter_menu.pack(side="left", padx=5)
+        self.filter_menu.set("Pixele")
+
+        self.filter_menu2 = ctk.CTkOptionMenu(self.button_frame, values=["Wyostrzający", "Uśredniający", "Gaussa", "Znajdowanie krawędzi"],
+                                             command=self.apply_filter)
+        self.filter_menu2.pack(side="left", padx=5)
+        self.filter_menu2.set("Filtry")
+        
+        self.refresh_button = ctk.CTkButton(self.button_frame, text="Odśwież", command=self.refresh)
+        self.refresh_button.pack(side="left", padx=5)
+
+        self.brightness_scale = ctk.CTkSlider(root, from_=-255, to=255, command=self.update_brightness)
+        self.brightness_scale.pack(fill="x", padx=10, pady=10)
+        
+        self.contrast_scale = ctk.CTkSlider(root, from_=-255, to=255, command=self.update_contrast)
+        self.contrast_scale.pack(fill="x", padx=10, pady=10)
+        
+
+    def load_image(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Obrazy", "*.png;*.jpg;*.jpeg;*.bmp")])
+        if file_path:
+            self.image = Image.open(file_path).convert("RGB")
+            self.processed_image = self.image.copy()
+            self.current_effect = self.image.copy()
+            self.display_image(self.image, self.left_label)
+            self.display_image(self.processed_image, self.middle_label)
+
+    
+    def save_image(self):
+        if self.processed_image:
+            file_path = filedialog.asksaveasfilename(defaultextension=".png",
+                                                     filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg")])
+            if file_path:
+                self.processed_image.save(file_path)
+
+    # def display_image(self, img, label):
+    #     img = img.resize((250, 250))
+    #     ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(250, 250))
+    #     label.configure(image=ctk_img, text="")
+    #     label.image = ctk_img  
+
+    def display_image(self, img, label):
+        self.root.update_idletasks()  
+        frame_width = 400  # Stała szerokość
+        img_ratio = img.width / img.height
+
+        new_width = frame_width
+        new_height = int(frame_width / img_ratio)  # Zachowanie proporcji
+
+        resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        ctk_img = ctk.CTkImage(light_image=resized_img, dark_image=resized_img, size=(new_width, new_height))
+        label.configure(image=ctk_img, text="")
+        label.image = ctk_img
+        label.pack(expand = True, anchor = "center")
+        
+    def refresh(self):
+        self.current_effect = self.image.copy()
+        self.display_image(self.current_effect, self.middle_label)
+        self.brightness_scale.set(0)
+        
+
+    def apply_pixels_filter(self, choice):
+        if self.image:
+            if choice == "Szarość":
+                self.to_grayscale()
+            elif choice == "Negatyw":
+                self.to_negative()
+            elif choice == "Binaryzacja":
+                self.binarize()
+            self.current_effect = self.processed_image.copy()
+
+    def apply_filter(self, choice):
+        if self.image:
+            if choice == "Wyostrzający":
+                self.apply_sharpen()
+            elif choice == "Uśredniający":
+                self.apply_blur()
+            elif choice == "Gaussa": #to do
+                self.apply_gaussian()
+            elif choice == "Znajdowanie krawędzi":
+                self.apply_find_edges()
+            self.current_effect = self.processed_image.copy()
+
+    def to_grayscale(self):
+        pixels = np.array(self.image)
+        gray = np.mean(pixels, axis=2).astype(np.uint8)
+        self.processed_image = Image.fromarray(np.stack([gray]*3, axis=2))
+        self.display_image(self.processed_image, self.middle_label)
+
+    def to_negative(self):
+        pixels = np.array(self.image)
+        neg = 255 - pixels
+        self.processed_image = Image.fromarray(neg)
+        self.display_image(self.processed_image, self.middle_label)
+
+    def binarize(self):
+        pixels = np.array(self.image)
+        gray = np.mean(pixels, axis=2)
+        binary = (gray > 128) * 255
+        self.processed_image = Image.fromarray(np.stack([binary]*3, axis=2).astype(np.uint8))
+        self.display_image(self.processed_image, self.middle_label)
+
+    def update_brightness(self, value):
+        if self.current_effect:
+            value = int(float(value))
+            pixels = np.array(self.current_effect, dtype=np.int16)
+            pixels = np.clip(pixels + value, 0, 255)
+            self.processed_image = Image.fromarray(pixels.astype(np.uint8))
+            self.display_image(self.processed_image, self.middle_label)
+    
+    #do zrobienia
+    def update_contrast(self, value):
+        pass
+
+    def apply_blur(self):
+        if self.image:
+            pixels = np.array(self.image)
+            kernel = np.ones((3, 3)) / 9
+            blurred = self.convolve(pixels, kernel)
+            self.processed_image = Image.fromarray(blurred)
+            self.display_image(self.processed_image, self.middle_label)
+
+    def apply_sharpen(self):
+        if self.image:
+            pixels = np.array(self.image)
+            kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+            sharpened = self.convolve(pixels, kernel)
+            self.processed_image = Image.fromarray(sharpened)
+            self.display_image(self.processed_image, self.middle_label)
+            
+    def apply_find_edges(self):
+        if self.image:
+            pixels = np.array(self.image)
+            kernel = np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]])
+            edges = self.convolve(pixels, kernel)
+            self.processed_image = Image.fromarray(edges)
+            self.display_image(self.processed_image, self.middle_label)
+    #TO DO
+    def apply_gaussian(self): 
+        pass 
+
+    def convolve(self, img, kernel):
+        height, width, channels = img.shape
+        ksize = kernel.shape[0]
+        pad = ksize // 2
+        padded_img = np.pad(img, ((pad, pad), (pad, pad), (0, 0)), mode='constant')
+        output = np.zeros_like(img)
+
+        for y in range(height):
+            for x in range(width):
+                for c in range(channels):
+                    region = padded_img[y:y+ksize, x:x+ksize, c]
+                    output[y, x, c] = np.clip(np.sum(region * kernel), 0, 255)
+
+        return output.astype(np.uint8)
+
+if __name__ == "__main__":
+    root = ctk.CTk()
+    app = ImageProcessorApp(root)
+    root.mainloop()
