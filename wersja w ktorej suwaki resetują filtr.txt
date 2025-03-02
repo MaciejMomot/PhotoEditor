@@ -15,8 +15,6 @@ class ImageProcessorApp:
         self.image = None
         self.processed_image = None
         self.current_effect = None  
-        self.brightness_value = 0
-        self.contrast_value = 0
         
         self.main_frame = ctk.CTkFrame(root)
         self.main_frame.pack(pady=10, padx=10, fill="both", expand=True)
@@ -83,9 +81,10 @@ class ImageProcessorApp:
 
     def save_image(self):
         if self.processed_image:
-            file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg")])
+            file_path = filedialog.asksaveasfilename(defaultextension=".png",
+                                                     filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg")])
             if file_path:
-                self.processed_image.save(file_path)
+                self.processed_image.save(file_path) 
 
     def display_image(self, img, label):
         self.root.update_idletasks()  
@@ -105,9 +104,6 @@ class ImageProcessorApp:
         self.current_effect = self.image.copy()
         self.display_image(self.current_effect, self.middle_label)
         self.brightness_scale.set(0)
-        self.contrast_scale.set(0)
-        self.brightness_value = 0
-        self.contrast_value = 0
         
     def apply_pixels_filter(self, choice):
         if self.image:
@@ -151,19 +147,21 @@ class ImageProcessorApp:
         self.display_image(self.processed_image, self.middle_label)
 
     def update_brightness(self, value):
-        self.brightness_value = int(float(value))
-        self.apply_brightness_contrast()
+        if self.current_effect:
+            value = int(float(value))
+            pixels = np.array(self.current_effect, dtype=np.int16)
+            pixels = np.clip(pixels + value, 0, 255)
+            self.processed_image = Image.fromarray(pixels.astype(np.uint8))
+            self.display_image(self.processed_image, self.middle_label)
     
     def update_contrast(self, value):
-        self.contrast_value = float(value) / 100
-        self.apply_brightness_contrast()
-    
-    def apply_brightness_contrast(self):
         if self.current_effect:
-            pixels = np.array(self.current_effect, dtype=np.float32)
-            pixels = np.clip(pixels + self.brightness_value, 0, 255)
-            mean = np.mean(pixels, axis=(0, 1), keepdims=True)
-            pixels = np.clip((pixels - mean) * (1 + self.contrast_value) + mean, 0, 255)
+            value = float(value) / 255  # Skaluje wartość suwaka do zakresu [-1, 1]
+            pixels = np.array(self.current_effect, dtype=np.int16)
+            
+            mean = np.mean(pixels, axis=(0, 1), keepdims=True)  # Średnia jasność obrazu
+            pixels = np.clip((pixels - mean) * (1 + value) + mean, 0, 255)  # Zmiana kontrastu
+            
             self.processed_image = Image.fromarray(pixels.astype(np.uint8))
             self.display_image(self.processed_image, self.middle_label)
 
@@ -182,7 +180,7 @@ class ImageProcessorApp:
             sharpened = self.convolve(pixels, kernel)
             self.processed_image = Image.fromarray(sharpened)
             self.display_image(self.processed_image, self.middle_label)
-         
+            
     def apply_find_edges(self):
         if self.image:
             pixels = np.array(self.image)
@@ -193,12 +191,6 @@ class ImageProcessorApp:
     #TO DO
     def apply_gaussian(self): 
         pass 
-    def histogram(self):
-        pass
-    #powyższej gauss i histogram
-    #jeszcze projekcja pionowa i pozioma
-    #jeszcze wykrywanie krawdzi (krzyż Robertsa, operator Sobela)
-    #jeszcze możliwość tworzenia dowolnych wag filtrów
 
     def convolve(self, img, kernel):
         height, width, channels = img.shape
