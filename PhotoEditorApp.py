@@ -18,8 +18,10 @@ class ImageProcessorApp:
         self.image = None
         self.processed_image = None
         self.current_effect = None  
+        self.processed_image_history = []
         self.brightness_value = 0
         self.contrast_value = 0
+        self.threshold_value = 128 # dla binaryzacji
         
         self.main_frame = ctk.CTkFrame(root)
         self.main_frame.pack(pady=10, padx=10, fill="both", expand=True)
@@ -64,16 +66,73 @@ class ImageProcessorApp:
         
         self.refresh_button = ctk.CTkButton(self.button_frame, text="Odśwież", command=self.refresh)
         self.refresh_button.pack(side="left", padx=5)
-
-        self.brightness_label = ctk.CTkLabel(root, text="Jasność")
-        self.brightness_label.pack(pady=(10, 0))
-        self.brightness_scale = ctk.CTkSlider(root, from_=-255, to=255, command=self.update_brightness)
-        self.brightness_scale.pack(fill="x", padx=10, pady=10)
         
-        self.contrast_label = ctk.CTkLabel(root, text="Kontrast")
-        self.contrast_label.pack(pady=(10, 0))
-        self.contrast_scale = ctk.CTkSlider(root, from_=-255, to=255, command=self.update_contrast)
-        self.contrast_scale.pack(fill="x", padx=10, pady=10)
+        self.undo_button = ctk.CTkButton(self.button_frame, text="Cofnij zmiany", command=self.go_to_previous_edit_status)
+        self.undo_button.pack(side="left", padx=5)
+        
+        self.slider_frame = ctk.CTkFrame(root)
+        self.slider_frame.pack(pady=10, fill="x")
+        
+        self.slider_frame.grid_rowconfigure(0, weight=1)
+        self.slider_frame.grid_columnconfigure(0, weight=1)
+        self.slider_frame.grid_columnconfigure(1, weight=1)
+
+        self.brightness_label = ctk.CTkLabel(self.slider_frame, text="Jasność")
+        self.brightness_label.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
+
+        self.brightness_scale = ctk.CTkSlider(self.slider_frame, from_=-255, to=255, command=self.update_brightness)
+        self.brightness_scale.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+
+        self.contrast_label = ctk.CTkLabel(self.slider_frame, text="Kontrast")
+        self.contrast_label.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+
+        self.contrast_scale = ctk.CTkSlider(self.slider_frame, from_=-255, to=255, command=self.update_contrast)
+        self.contrast_scale.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        
+        # Tworzymy główną ramkę
+        self.customization_frame = ctk.CTkFrame(root)
+        self.customization_frame.pack(pady=10, fill="x")
+
+        # Konfiguracja wierszy i kolumn w ramach
+        self.customization_frame.grid_rowconfigure(0, weight=1)
+        self.customization_frame.grid_rowconfigure(1, weight=1)
+        self.customization_frame.grid_rowconfigure(2, weight=1)
+        self.customization_frame.grid_rowconfigure(3, weight=1)  # Dla wiersza przycisku
+        self.customization_frame.grid_columnconfigure(0, weight=3)
+        self.customization_frame.grid_columnconfigure(1, weight=1)
+        self.customization_frame.grid_columnconfigure(2, weight=1)
+        self.customization_frame.grid_columnconfigure(3, weight=1)
+        self.customization_frame.grid_columnconfigure(4, weight=1)
+
+        # Próg binarnego filtra
+        self.threshold_label = ctk.CTkLabel(self.customization_frame, text="Próg binarnego filtra")
+        self.threshold_label.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
+
+        # Pole do wprowadzenia wartości progu
+        self.threshold_entry = ctk.CTkEntry(self.customization_frame, width=10)
+        self.threshold_entry.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.threshold_entry.insert(0, str(self.threshold_value))  # Wstawienie początkowej wartości progu
+
+        # Przycisk do zatwierdzenia progu
+        self.apply_threshold_button = ctk.CTkButton(self.customization_frame, text="Zatwierdź próg", command=self.apply_threshold)
+        self.apply_threshold_button.grid(row=2, column=0, padx=10, pady=10)
+
+        # Macierz do ustawiania filtra w 2. kolumnie
+        self.kernel_entries = []  # Lista przechowująca pola dla macierzy 3x3
+        for i in range(3):
+            row_entries = []
+            for j in range(3):
+                entry = ctk.CTkEntry(self.customization_frame, width=40)
+                entry.grid(row=i, column=j+1, padx=5, pady=5)
+                entry.insert(0, "0")  # Ustawiamy początkowo wartość na 0
+                row_entries.append(entry)
+            self.kernel_entries.append(row_entries)
+
+        # Przycisk do zatwierdzenia filtra w 3. kolumnie
+        self.apply_kernel_button = ctk.CTkButton(self.customization_frame, text="Zatwierdź filtr", command=self.apply_custom_filter)
+        self.apply_kernel_button.grid(row=1, column=4, rowspan=3, padx=10, pady=20, sticky="ew")
+        
+        
     
     # LOADING AND SAVING IMAGES
 
@@ -82,6 +141,7 @@ class ImageProcessorApp:
         if file_path:
             self.image = Image.open(file_path).convert("RGB")
             self.processed_image = self.image.copy()
+            self.processed_image_history.append(self.image.copy())
             self.current_effect = self.image.copy()
             self.display_image(self.image, self.left_label)
             self.display_image(self.processed_image, self.middle_label)
@@ -117,10 +177,23 @@ class ImageProcessorApp:
         self.contrast_scale.set(0)
         self.brightness_value = 0
         self.contrast_value = 0
+        self.threshold_value = 128
         self.histograms()
         
+    def go_to_previous_edit_status(self):
+        if len(self.processed_image_history) > 1:
+            self.processed_image_history.pop()  # Usuń ostatni element
+            self.processed_image = self.processed_image_history[-1]
+            self.current_effect = self.processed_image
+            self.brightness_scale.set(0)
+            self.contrast_scale.set(0)
+            self.brightness_value = 0
+            self.contrast_value = 0
+            self.threshold_value = 128
+            self.display_image(self.processed_image, self.middle_label)
+            self.histograms()
+    
     # APPLYING FILTERS
-
     def apply_pixels_filter(self, choice):
         if self.image:
             if choice == "Szarość":
@@ -128,8 +201,13 @@ class ImageProcessorApp:
             elif choice == "Negatyw":
                 self.to_negative()
             elif choice == "Binaryzacja":
-                self.binarize()
+                self.apply_binarize()
             self.current_effect = self.processed_image.copy()
+            self.processed_image_history.append(self.processed_image.copy())
+            self.brightness_value = 0
+            self.brightness_scale.set(0)
+            self.contrast_value = 0
+            self.contrast_scale.set(0)
             self.histograms()
 
     def apply_filter(self, choice):
@@ -145,6 +223,11 @@ class ImageProcessorApp:
             elif choice == "Sobel":
                 self.apply_gradient_magnitude("roberts")
             self.current_effect = self.processed_image.copy()
+            self.processed_image_history.append(self.processed_image.copy())
+            self.brightness_value = 0
+            self.brightness_scale.set(0)
+            self.contrast_value = 0
+            self.contrast_scale.set(0)
             self.histograms()
 
     def to_grayscale(self, trigger, img=None):
@@ -168,10 +251,10 @@ class ImageProcessorApp:
         self.processed_image = Image.fromarray(neg)
         self.display_image(self.processed_image, self.middle_label)
 
-    def binarize(self):
+    def apply_binarize(self):
         pixels = np.array(self.processed_image)
         gray = np.mean(pixels, axis=2)
-        binary = (gray > 128) * 255
+        binary = (gray > self.threshold_value) * 255  # Używamy wartości z suwaka
         self.processed_image = Image.fromarray(np.stack([binary]*3, axis=2).astype(np.uint8))
         self.display_image(self.processed_image, self.middle_label)
 
@@ -192,6 +275,28 @@ class ImageProcessorApp:
             self.processed_image = Image.fromarray(pixels.astype(np.uint8))
             self.display_image(self.processed_image, self.middle_label)
             self.histograms()
+    
+    def apply_threshold(self):
+        try:
+            # Pobranie wartości z pola tekstowego
+            threshold_input = int(self.threshold_entry.get())
+            # Sprawdzanie, czy wartość mieści się w dozwolonym zakresie
+            if 0 <= threshold_input <= 255:
+                self.threshold_value = threshold_input
+            else:
+                self.show_error_message("Wartość progu musi być w zakresie 0-255.")
+        except ValueError:
+            self.show_error_message("Proszę wprowadzić prawidłową liczbę całkowitą.")
+    def show_error_message(self, message):
+        # Funkcja do wyświetlania komunikatu o błędzie
+        error_window = ctk.CTkToplevel(self.root)
+        error_window.title("Błąd")
+        error_label = ctk.CTkLabel(error_window, text=message)
+        error_label.pack(padx=10, pady=10)
+        ok_button = ctk.CTkButton(error_window, text="OK", command=error_window.destroy)
+        ok_button.pack(pady=10)
+        error_window.grab_set()
+        error_window.wait_window()
 
     def apply_blur(self):
         if self.image:
@@ -225,7 +330,7 @@ class ImageProcessorApp:
             g = np.array(g)
             b = np.array(b)
 
-            self.display_histograms(r, g, b)
+            # self.display_histograms(r, g, b)
 
     def display_histograms(self, r, g, b):
         fig, axs = plt.subplots(3, 1, figsize=(3.5, 9), facecolor='none')
@@ -236,18 +341,22 @@ class ImageProcessorApp:
         channels = [r, g, b]
 
         for ax, channel, color, label in zip(axs, channels, colors, labels):
-            ax.hist(channel.ravel(), bins=256, color=color, alpha=0.5)
+            hist, bins = np.histogram(channel.ravel(), bins=256, range=(0, 256))
+            hist = hist.astype(np.float32) / hist.sum()  # Normalizacja do zakresu 0-1
+            
+            ax.bar(bins[:-1], hist, width=1, color=color, alpha=0.5)
+            
             ax.set_title(label, color=color)
-            ax.set_xlim([0, 256])
+            ax.set_xlim([-5, 260])
             ax.patch.set_alpha(0)  # Ustawienie przezroczystości dla każdego subplotu
-            ax.spines['bottom'].set_color('white')
-            ax.spines['top'].set_color('white')
-            ax.spines['right'].set_color('white')
-            ax.spines['left'].set_color('white')
-            ax.xaxis.label.set_color('white')
-            ax.yaxis.label.set_color('white')
-            ax.tick_params(axis='x', colors='white')
-            ax.tick_params(axis='y', colors='white')
+            ax.spines['bottom'].set_color('black')
+            ax.spines['top'].set_color('black')
+            ax.spines['right'].set_color('black')
+            ax.spines['left'].set_color('black')
+            ax.xaxis.label.set_color('black')
+            ax.yaxis.label.set_color('black')
+            ax.tick_params(axis='x', colors='black')
+            ax.tick_params(axis='y', colors='black')
 
         plt.tight_layout()
 
@@ -262,7 +371,7 @@ class ImageProcessorApp:
         widget.pack(expand=True, anchor="center")
         
         # Usunięcie tła z płótna
-        widget.config(bg='black', highlightthickness=0)
+        widget.config(bg='white', highlightthickness=0)
 
         plt.close(fig)
 
@@ -342,6 +451,32 @@ class ImageProcessorApp:
 
         print("Gaussian filter applied")
 
+    def apply_custom_filter(self):
+        kernel = []
+        
+        # Pobieramy wartości z pól tekstowych
+        for row in self.kernel_entries:
+            kernel_row = []
+            for entry in row:
+                try:
+                    value = float(entry.get())
+                    kernel_row.append(value)
+                except ValueError:
+                    self.show_error_message("Proszę wprowadzić poprawne wartości liczbowe w macierzy!")
+                    return
+            kernel.append(kernel_row)
+        
+        # Sprawdzamy, czy użytkownik wypełnił przynajmniej jedno pole
+        if not any(any(value != 0 for value in row) for row in kernel):
+            self.show_error_message("Proszę wprowadzić przynajmniej jedno pole z wartością różną od zera!")
+        else:
+            pixels = np.array(self.processed_image)
+            kernel = np.array(kernel)
+            modified = self.convolve(pixels, kernel)
+            self.processed_image = Image.fromarray(modified)
+            self.display_image(self.processed_image, self.middle_label)
+            print("Zastosowano filtr:", kernel)
+    
 if __name__ == "__main__":
     root = ctk.CTk()
     app = ImageProcessorApp(root)
