@@ -215,6 +215,7 @@ class ImageProcessorApp:
             self.contrast_value = 0
             self.reset_labels()
             self.display_image(self.processed_image, self.middle_label)
+            self.prepare_plots()
             print("Undo applied")
         else:
             self.show_error_message("No more undo steps available")
@@ -248,36 +249,59 @@ class ImageProcessorApp:
             return
         
         self.processed_image_history.append(self.processed_image.copy())
-        self.current_effect = self.processed_image.copy()
         
         if self.selected_filter == "grayscale":
             self.grayscale()
+
         elif self.selected_filter == "negative":
             self.negative()
+
         elif self.selected_filter == "binarization":
-            self.set_threshold()
-            self.binarization(self.threshold)
+            trigger = self.set_threshold()
+            if trigger:
+                self.binarization(self.threshold)
+            else: 
+                self.on_select(self.selected_filter)
+                return
+            
         elif self.selected_filter == "sharpening":
             self.sharpen()
+
         elif self.selected_filter == "blur":
-            self.set_threshold()
-            self.blur(self.threshold)
+            trigger = self.set_threshold()
+            if trigger:
+                self.blur(self.threshold)
+            else: 
+                self.on_select(self.selected_filter)
+                return
+            
         elif self.selected_filter == "gaussian":
-            self.set_threshold()
-            self.gaussian(self.threshold)
+            trigger = self.set_threshold()
+            if trigger:
+                self.gaussian(self.threshold)
+            else: 
+                self.on_select(self.selected_filter)
+                return
+            
         elif self.selected_filter == "laplacian":
             self.laplacian()
+
         elif self.selected_filter == "Robert's cross":
             self.gradient(self.selected_filter)
+
         elif self.selected_filter == "Sobel operator":
             self.gradient(self.selected_filter)
+
         elif self.selected_filter == "Prewitt operator":
             self.gradient(self.selected_filter)
+
         elif self.selected_filter == "Scharr operator":
             self.gradient(self.selected_filter)
+
         elif self.selected_filter == "Sobel-Feldman operator":
             self.gradient(self.selected_filter)
 
+        self.current_effect = self.processed_image.copy()
         self.reset_labels()
         self.prepare_plots()
 
@@ -295,23 +319,35 @@ class ImageProcessorApp:
     def set_threshold(self):
 
         try:
-            threshold = int(self.threshold_entry.get())        
+            threshold = float(self.threshold_entry.get())  
 
             if self.selected_filter == "binarization" and 0 <= threshold <= 255:
                 self.threshold = threshold
             elif self.selected_filter == "binarization":
                 self.show_error_message("Please insert threshold value between 0 and 255.")
+                return False
             elif self.selected_filter == "gaussian" and threshold > 0:
                 self.threshold = threshold
             elif self.selected_filter == "gaussian":
                 self.show_error_message("Please insert sigma value greater than 0.")
-            elif self.selected_filter == "blur" and threshold > 0 and type(threshold) == int:
-                self.threshold = threshold
+                return False
+            elif self.selected_filter == "blur" and threshold > 0:
+                try:
+                    threshold = int(threshold)
+                    self.threshold = threshold
+                except ValueError:
+                    self.show_error_message("Please insert integer.")
+                    return False
             elif self.selected_filter == "blur":
                 self.show_error_message("Please insert threshold value greater than 0.")
+                return False
 
         except ValueError:
             self.show_error_message("Please insert a valid number.")
+            return False
+        
+        return True
+
 
     def show_error_message(self, message):
 
@@ -396,7 +432,7 @@ class ImageProcessorApp:
 
     def sharpen(self):
         pixels = np.array(self.processed_image)
-        kernel = np.array([[0, -3, 0], [-3, 16, -3], [0, -3, 0]])
+        kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
         sharpened = self.convolve(pixels, kernel)
         self.processed_image = Image.fromarray(sharpened)
         self.display_image(self.processed_image, self.middle_label)
@@ -511,6 +547,7 @@ class ImageProcessorApp:
             kernel = np.array(kernel)
             modified = self.convolve(pixels, kernel)
             self.processed_image = Image.fromarray(modified)
+            self.processed_image_history.append(self.image.copy())
             self.display_image(self.processed_image, self.middle_label)
             print("Zastosowano filtr:", kernel) 
 
@@ -540,63 +577,63 @@ class ImageProcessorApp:
 
         return R, G, B, K, vertical, horizontal
 
-    def prepare_plotsdasdadadfe(self):
+    # def prepare_plots(self):
 
-        if self.processed_image is None:
-            return
+    #     if self.processed_image is None:
+    #         return
 
-        R, G, B, K, vertical, horizontal = self.prepare_plot_data()
+    #     R, G, B, K, vertical, horizontal = self.prepare_plot_data()
 
-        # Create a figure for each plot
-        fig1, ax1 = plt.subplots(figsize=(5, 5))
-        fig2, ax2 = plt.subplots(figsize=(5, 5))
-        fig3, ax3 = plt.subplots(figsize=(5, 5))
+    #     # Create a figure for each plot
+    #     fig1, ax1 = plt.subplots(figsize=(5, 5))
+    #     fig2, ax2 = plt.subplots(figsize=(5, 5))
+    #     fig3, ax3 = plt.subplots(figsize=(5, 5))
 
-        # Plot 1: Histogram
-        x = np.arange(256)
-        ax1.plot(x, R, color='red')
-        ax1.plot(x, G, color='green')
-        ax1.plot(x, B, color='blue')
-        ax1.plot(x, y, color='gray')
-        ax1.set_facecolor('black')
-        ax1.tick_params(colors='darkgray')
-        ax1.spines['bottom'].set_color('darkgray')
-        ax1.spines['left'].set_color('darkgray')
+    #     # Plot 1: Histogram
+    #     x = np.arange(256)
+    #     ax1.plot(x, R, color='red')
+    #     ax1.plot(x, G, color='green')
+    #     ax1.plot(x, B, color='blue')
+    #     ax1.plot(x, y, color='gray')
+    #     ax1.set_facecolor('black')
+    #     ax1.tick_params(colors='darkgray')
+    #     ax1.spines['bottom'].set_color('darkgray')
+    #     ax1.spines['left'].set_color('darkgray')
 
-        # Plot 2: Horizontal intensity
-        x = np.arange(len(horizontal))
-        y = horizontal
-        ax2.plot(x, y, color='gray')
-        ax2.set_facecolor('black')
-        ax2.tick_params(colors='darkgray')
-        ax2.spines['bottom'].set_color('darkgray')
-        ax2.spines['left'].set_color('darkgray')
+    #     # Plot 2: Horizontal intensity
+    #     x = np.arange(len(horizontal))
+    #     y = horizontal
+    #     ax2.plot(x, y, color='gray')
+    #     ax2.set_facecolor('black')
+    #     ax2.tick_params(colors='darkgray')
+    #     ax2.spines['bottom'].set_color('darkgray')
+    #     ax2.spines['left'].set_color('darkgray')
 
-        # Plot 3: Vertical intensity
-        x = vertical
-        y = np.arange(len(vertical))
-        ax3.plot(x, y, color='gray')
-        ax3.set_facecolor('black')
-        ax3.tick_params(colors='darkgray')
-        ax3.spines['bottom'].set_color('darkgray')
-        ax3.spines['left'].set_color('darkgray')
+    #     # Plot 3: Vertical intensity
+    #     x = vertical
+    #     y = np.arange(len(vertical))
+    #     ax3.plot(x, y, color='gray')
+    #     ax3.set_facecolor('black')
+    #     ax3.tick_params(colors='darkgray')
+    #     ax3.spines['bottom'].set_color('darkgray')
+    #     ax3.spines['left'].set_color('darkgray')
 
-        # Display the plots on separate canvases
-        for widget in self.right_frame.winfo_children():
-            widget.destroy()  # Clear previous plots
+    #     # Display the plots on separate canvases
+    #     for widget in self.right_frame.winfo_children():
+    #         widget.destroy()  # Clear previous plots
 
-        # Temporary canvas names
-        canvas1 = FigureCanvasTkAgg(fig1, master=self.right_frame)
-        canvas1.draw()
-        canvas1.get_tk_widget().pack(side="top", fill='both', expand=True)
+    #     # Temporary canvas names
+    #     canvas1 = FigureCanvasTkAgg(fig1, master=self.right_frame)
+    #     canvas1.draw()
+    #     canvas1.get_tk_widget().pack(side="top", fill='both', expand=True)
 
-        canvas2 = FigureCanvasTkAgg(fig2, master=self.right_frame)
-        canvas2.draw()
-        canvas2.get_tk_widget().pack(side="top", fill='both', expand=True)
+    #     canvas2 = FigureCanvasTkAgg(fig2, master=self.right_frame)
+    #     canvas2.draw()
+    #     canvas2.get_tk_widget().pack(side="top", fill='both', expand=True)
 
-        canvas3 = FigureCanvasTkAgg(fig3, master=self.right_frame)
-        canvas3.draw()
-        canvas3.get_tk_widget().pack(side="top", fill='both', expand=True)
+    #     canvas3 = FigureCanvasTkAgg(fig3, master=self.right_frame)
+    #     canvas3.draw()
+    #     canvas3.get_tk_widget().pack(side="top", fill='both', expand=True)
 
     
     def prepare_plots(self):
@@ -605,42 +642,44 @@ class ImageProcessorApp:
 
         R, G, B, K, vertical, horizontal = self.prepare_plot_data()
 
-        # Create a single figure with 3 subplots
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))  # Adjust figsize as needed
-        fig.patch.set_facecolor('black')  # Set the background color of the figure
 
-        # Plot 1: Histogram
+        fig = plt.figure(figsize=(15, 15)) 
+        fig.patch.set_facecolor('black')
+        gs = fig.add_gridspec(3, 3) 
+
+        # Plot 1
+        ax1 = fig.add_subplot(gs[0:2, 0:2])
         x = np.arange(256)
-        axes[0].plot(x, R, color='red')
-        axes[0].plot(x, G, color='green')
-        axes[0].plot(x, B, color='blue')
-        axes[0].plot(x, K, color='gray')
-        axes[0].set_facecolor('black')
-        axes[0].tick_params(colors='darkgray')
-        axes[0].spines['bottom'].set_color('darkgray')
-        axes[0].spines['left'].set_color('darkgray')
+        ax1.plot(x, R, color='red')
+        ax1.plot(x, G, color='green')
+        ax1.plot(x, B, color='blue')
+        ax1.plot(x, K, color='gray')
+        ax1.set_facecolor('black')
+        ax1.tick_params(colors='darkgray')
+        ax1.spines['bottom'].set_color('darkgray')
+        ax1.spines['left'].set_color('darkgray')
 
-        # Plot 2: Horizontal intensity
+        # Plot 2
+        ax2 = fig.add_subplot(gs[2, 0:2])
         x = np.arange(len(horizontal))
-        axes[1].plot(x, horizontal, color='gray')
-        axes[1].set_facecolor('black')
-        axes[1].tick_params(colors='darkgray')
-        axes[1].spines['bottom'].set_color('darkgray')
-        axes[1].spines['left'].set_color('darkgray')
+        ax2.plot(x, horizontal, color='gray')
+        ax2.set_facecolor('black')
+        ax2.tick_params(colors='darkgray')
+        ax2.spines['bottom'].set_color('darkgray')
+        ax2.spines['left'].set_color('darkgray')
 
-        # Plot 3: Vertical intensity
+        # Plot 3
+        ax3 = fig.add_subplot(gs[0:2, 2])
         y = np.arange(len(vertical))
-        axes[2].plot(vertical, y, color='gray')
-        axes[2].set_facecolor('black')
-        axes[2].tick_params(colors='darkgray')
-        axes[2].spines['bottom'].set_color('darkgray')
-        axes[2].spines['left'].set_color('darkgray')
+        ax3.plot(vertical, y, color='gray')
+        ax3.set_facecolor('black')
+        ax3.tick_params(colors='darkgray')
+        ax3.spines['bottom'].set_color('darkgray')
+        ax3.spines['left'].set_color('darkgray')
 
-        # Clear previous plots in the right frame
         for widget in self.right_frame.winfo_children():
             widget.destroy()
 
-        # Embed the figure in the right frame
         canvas = FigureCanvasTkAgg(fig, master=self.right_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill='both', expand=True)
