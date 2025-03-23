@@ -5,9 +5,10 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-class ImageProcessorApp:
+class PhotoHubApp:
 
     def __init__(self, root):
+        
         self.root = root
         self.root.title("PhotoHub")
         self.root.geometry("850x600")
@@ -26,20 +27,19 @@ class ImageProcessorApp:
         self.selected_filter = "Choose operation"
         
         self.main_frame = ctk.CTkFrame(root)
-        self.main_frame.pack(pady=10, padx=10, fill="both", expand=True)
+        self.main_frame.pack(pady=5, padx=5, fill="both", expand=True)
 
-        self.left_frame = ctk.CTkFrame(self.main_frame, width=400, height=400)
-        self.left_frame.pack(side="left", padx=10, pady=10, expand=True)
-        self.middle_frame = ctk.CTkFrame(self.main_frame, width=400, height=400)
-        self.middle_frame.pack(side="left", padx=10, pady=10, expand=True)
-        self.right_frame = ctk.CTkFrame(self.main_frame, width=400, height=400)
-        self.right_frame.pack(side="left", padx=10, pady=10, expand=True)
+        self.left_frame = ctk.CTkFrame(self.main_frame)
+        self.left_frame.pack(side="left", padx=5, pady=5, fill="both", expand=True)
+        self.middle_frame = ctk.CTkFrame(self.main_frame)
+        self.middle_frame.pack(side="left", padx=5, pady=5, fill="both", expand=True)
+        self.right_frame = ctk.CTkFrame(self.main_frame)
+        self.right_frame.pack(side="left", padx=5, pady=5, fill="both", expand=True)
 
         self.left_label = ctk.CTkLabel(self.left_frame, text="Original image")
-        self.left_label.pack(pady=10)
+        self.left_label.pack(padx=5)
         self.middle_label = ctk.CTkLabel(self.middle_frame, text="Processed image")
-        self.middle_label.pack(pady=10)
-        
+        self.middle_label.pack(padx=5)
         self.right_label = ctk.CTkLabel(self.right_frame, text="Histograms")
         self.right_label.pack(pady=10)
         
@@ -47,30 +47,35 @@ class ImageProcessorApp:
         self.middle_frame.pack_propagate(False)
         self.right_frame.pack_propagate(False)
 
+        self.left_frame.bind("<Configure>", lambda event: self.on_resize())
+        self.middle_frame.bind("<Configure>", lambda event: self.on_resize())
+        self.right_frame.bind("<Configure>", lambda event: self.on_resize())
+
         self.button_frame = ctk.CTkFrame(root)
         self.button_frame.pack(pady=10)
 
         self.load_button = ctk.CTkButton(self.button_frame, text="Load image", command=self.load_image)
-        self.load_button.pack(side="left", padx=5)
+        self.load_button.pack(side="left", padx=3)
 
         self.save_button = ctk.CTkButton(self.button_frame, text="Save", command=self.save_image)
-        self.save_button.pack(side="left", padx=5)
+        self.save_button.pack(side="left", padx=3)
 
         self.filter_menu = ctk.CTkComboBox(self.button_frame, 
-                                           values=["Choose operation",
-                                                    "grayscale",
-                                                    "negative", 
-                                                    "binarization", 
-                                                    "sharpening", 
-                                                    "blur", 
-                                                    "gaussian", 
-                                                    "laplacian", 
-                                                    "Robert's cross", 
-                                                    "Sobel operator", 
-                                                    "Prewitt operator", 
-                                                    "Scharr operator", 
-                                                    "Sobel-Feldman operator"], 
-                                            command=self.on_select)
+                           values=["Choose operation",
+                                "grayscale",
+                                "negative", 
+                                "binarization", 
+                                "sharpening", 
+                                "blur", 
+                                "gaussian", 
+                                "laplacian", 
+                                "Robert's cross", 
+                                "Sobel operator", 
+                                "Prewitt operator", 
+                                "Scharr operator", 
+                                "Sobel-Feldman operator"], 
+                           command=self.on_select,
+                           state="readonly")
         self.filter_menu.pack(side="left", padx=5)
         self.filter_menu.set("Choose operation")
 
@@ -82,9 +87,6 @@ class ImageProcessorApp:
         
         self.undo_button = ctk.CTkButton(self.button_frame, text="Undo", command=self.undo)
         self.undo_button.pack(side="left", padx=5)
-
-        self.refresh_button = ctk.CTkButton(self.button_frame, text="Refresh Plots", command=self.prepare_plots)
-        self.refresh_button.pack(side="left", padx=5)
         
         self.slider_frame = ctk.CTkFrame(root)
         self.slider_frame.pack(pady=10, fill="x")
@@ -105,43 +107,43 @@ class ImageProcessorApp:
         self.contrast_scale = ctk.CTkSlider(self.slider_frame, from_=-255, to=255, command=self.set_contrast)
         self.contrast_scale.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
         
-        # Tworzymy główną ramkę
         self.customization_frame = ctk.CTkFrame(root)
         self.customization_frame.pack(pady=10, fill="x")
 
-        # Konfiguracja wierszy i kolumn w ramach
         self.customization_frame.grid_rowconfigure(0, weight=1)
         self.customization_frame.grid_rowconfigure(1, weight=1)
         self.customization_frame.grid_rowconfigure(2, weight=1)
-        self.customization_frame.grid_rowconfigure(3, weight=1)  # Dla wiersza przycisku
+        self.customization_frame.grid_rowconfigure(3, weight=1) 
         self.customization_frame.grid_columnconfigure(0, weight=3)
         self.customization_frame.grid_columnconfigure(1, weight=1)
         self.customization_frame.grid_columnconfigure(2, weight=1)
         self.customization_frame.grid_columnconfigure(3, weight=1)
         self.customization_frame.grid_columnconfigure(4, weight=1)
 
-        # Próg binarnego filtra
+
+        # PARAMETERS FOR FILTERS
+
         self.threshold_label = ctk.CTkLabel(self.customization_frame, text = self.threshold_text)
-        self.threshold_label.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
+        self.threshold_label.grid(row=0, column=0, padx=5, pady=2, sticky="ew")
 
-        # Pole do wprowadzenia wartości progu
         self.threshold_entry = ctk.CTkEntry(self.customization_frame, width=10)
-        self.threshold_entry.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.threshold_entry.grid(row=1, column=0, padx=5, pady=2, sticky="ew")
 
-        # Macierz do ustawiania filtra w 2. kolumnie
-        self.kernel_entries = []  # Lista przechowująca pola dla macierzy 3x3
+
+        # CUSTOM FILTER WIDGETS
+
+        self.kernel_entries = []
         for i in range(3):
             row_entries = []
             for j in range(3):
                 entry = ctk.CTkEntry(self.customization_frame, width=40)
-                entry.grid(row=i, column=j+1, padx=5, pady=5)
-                entry.insert(0, "0")  # Ustawiamy początkowo wartość na 0
+                entry.grid(row=i, column=j+1, padx=2, pady=2)
+                entry.insert(0, "0")
                 row_entries.append(entry)
             self.kernel_entries.append(row_entries)
 
-        # Przycisk do zatwierdzenia filtra w 3. kolumnie
-        self.apply_kernel_button = ctk.CTkButton(self.customization_frame, text="Zatwierdź filtr", command=self.apply_custom_filter)
-        self.apply_kernel_button.grid(row=1, column=4, rowspan=3, padx=10, pady=20, sticky="ew")
+        self.apply_kernel_button = ctk.CTkButton(self.customization_frame, text="Apply custom filter", command=self.apply_custom_filter)
+        self.apply_kernel_button.grid(row=1, column=4, rowspan=3, padx=5, pady=10, sticky="ew")
         
         
     
@@ -170,19 +172,44 @@ class ImageProcessorApp:
 
     # DISPLAYING IMAGES
 
+    def on_resize(self):
+        if self.image:
+            self.display_image(self.image, self.left_label)
+        if self.processed_image:
+            self.display_image(self.processed_image, self.middle_label)
+
+
+
     def display_image(self, img, label):
         self.root.update_idletasks()  
-        frame_width = 400 
-        img_ratio = img.width / img.height
 
-        new_width = frame_width
-        new_height = int(frame_width / img_ratio)
+        frame = label.master
+        frame_width = frame.winfo_width()
+        frame_height = frame.winfo_height()
+
+        if frame_width <= 1 or frame_height <= 1:
+            self.root.after(100, lambda: self.display_image(img, label))
+            return
+
+        img_ratio = img.width / img.height
+        frame_ratio = frame_width / frame_height
+
+        if img_ratio > frame_ratio:
+            new_width = int(frame_width * 0.95)
+            new_height = int(new_width / img_ratio)
+        else:
+            new_height = int(frame_height * 0.95)
+            new_width = int(new_height * img_ratio)
 
         resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=resized_img, dark_image=resized_img, size=(new_width, new_height))
-        label.configure(image=ctk_img, text="")
+
+        label.configure(image=ctk_img, text="")  
         label.image = ctk_img
-        label.pack(expand = True, anchor = "center")
+        label.place(relx=0.5, rely=0.5, anchor="center")
+
+
+    # RESET LABELS - CLEARING FILTERS
 
     def reset_labels(self):
         self.filter_menu.set("Choose operation")
@@ -190,6 +217,9 @@ class ImageProcessorApp:
         self.threshold_text = ""
         self.threshold_label.configure(text=self.threshold_text)
         self.threshold_entry.delete(0, "end")
+
+
+    # RESET FUNCTION
 
     def reset(self):
         self.current_effect = self.image.copy()
@@ -204,8 +234,10 @@ class ImageProcessorApp:
         print("Reset applied")
 
 
+    # UNDO FUNCTION
+
     def undo(self):
-        
+
         if len(self.processed_image_history) > 0:
             self.processed_image = self.processed_image_history.pop()
             self.current_effect = self.processed_image.copy()
@@ -215,11 +247,19 @@ class ImageProcessorApp:
             self.contrast_value = 0
             self.reset_labels()
             self.display_image(self.processed_image, self.middle_label)
-            self.prepare_plots()
+            
+            for widget in self.right_frame.winfo_children():
+                widget.destroy()
+            
+            self.refresh_button = ctk.CTkButton(self.right_frame, text="Refresh Plots", command=self.prepare_plots)
+            self.refresh_button.pack(expand=True, anchor="center")
+            
             print("Undo applied")
         else:
             self.show_error_message("No more undo steps available")
     
+
+    # CHANGES AFTER SELECTING FILTER
 
     def on_select(self, choice):
         self.selected_filter = choice
@@ -242,6 +282,9 @@ class ImageProcessorApp:
             self.threshold_entry.insert(0, str(self.threshold))
         else:
             self.threshold_entry.delete(0, "end")
+
+
+    # INVOKING FUNCTIONS - APPLYING FILTERS
 
     def apply_operation(self):
 
@@ -305,16 +348,8 @@ class ImageProcessorApp:
         self.reset_labels()
         self.prepare_plots()
 
-    
-    def set_brightness(self, value):
-        self.brightness_value = int(float(value))
-        self.brightness_contrast()
-    
-    def set_contrast(self, value):
-        self.contrast_value = float(value) / 255
-        self.brightness_contrast()
 
-
+    # SETTING PARAMETERS FOR FILTERS
     
     def set_threshold(self):
 
@@ -348,6 +383,8 @@ class ImageProcessorApp:
         
         return True
 
+
+    # ERROR MESSAGE POPUP
 
     def show_error_message(self, message):
 
@@ -397,6 +434,14 @@ class ImageProcessorApp:
     
     # CHANGING BRIGHTNESS AND CONTRAST
 
+    def set_brightness(self, value):
+        self.brightness_value = int(float(value))
+        self.brightness_contrast()
+    
+    def set_contrast(self, value):
+        self.contrast_value = float(value) / 255
+        self.brightness_contrast()
+
     def brightness_contrast(self):
         if self.current_effect:
             pixels = np.array(self.current_effect, dtype=np.float32)
@@ -405,6 +450,12 @@ class ImageProcessorApp:
             pixels = np.clip(pixels + self.brightness_value, 0, 255)
             self.processed_image = Image.fromarray(pixels.astype(np.uint8))
             self.display_image(self.processed_image, self.middle_label)
+            
+            for widget in self.right_frame.winfo_children():
+                widget.destroy()
+            
+            self.refresh_button = ctk.CTkButton(self.right_frame, text="Refresh Plots", command=self.prepare_plots)
+            self.refresh_button.pack(expand=True, anchor="center")
 
 
     """ FILTERS """
@@ -527,7 +578,7 @@ class ImageProcessorApp:
 
         kernel = []
         
-        # Pobieramy wartości z pól tekstowych
+        # fetching kernel values from entries
         for row in self.kernel_entries:
             kernel_row = []
             for entry in row:
@@ -535,13 +586,13 @@ class ImageProcessorApp:
                     value = float(entry.get())
                     kernel_row.append(value)
                 except ValueError:
-                    self.show_error_message("Proszę wprowadzić poprawne wartości liczbowe w macierzy!")
+                    self.show_error_message("Please enter the correct numerical values in the matrix!")
                     return
             kernel.append(kernel_row)
         
-        # Sprawdzamy, czy użytkownik wypełnił przynajmniej jedno pole
+        # checking if at least one field is different from zero
         if not any(any(value != 0 for value in row) for row in kernel):
-            self.show_error_message("Proszę wprowadzić przynajmniej jedno pole z wartością różną od zera!")
+            self.show_error_message("Please enter at least one field with a value different from zero!")
         else:
             pixels = np.array(self.processed_image)
             kernel = np.array(kernel)
@@ -549,8 +600,13 @@ class ImageProcessorApp:
             self.processed_image = Image.fromarray(modified)
             self.processed_image_history.append(self.image.copy())
             self.display_image(self.processed_image, self.middle_label)
-            print("Zastosowano filtr:", kernel) 
-
+            print("Custom filter applied:", kernel)
+            
+            # Reset the kernel input fields to "0"
+            for row in self.kernel_entries:
+                for entry in row:
+                    entry.delete(0, "end")
+                    entry.insert(0, "0")
 
     """ PLOTTING """
 
@@ -576,64 +632,6 @@ class ImageProcessorApp:
                 K[grey[i, j]] += 1
 
         return R, G, B, K, vertical, horizontal
-
-    # def prepare_plots(self):
-
-    #     if self.processed_image is None:
-    #         return
-
-    #     R, G, B, K, vertical, horizontal = self.prepare_plot_data()
-
-    #     # Create a figure for each plot
-    #     fig1, ax1 = plt.subplots(figsize=(5, 5))
-    #     fig2, ax2 = plt.subplots(figsize=(5, 5))
-    #     fig3, ax3 = plt.subplots(figsize=(5, 5))
-
-    #     # Plot 1: Histogram
-    #     x = np.arange(256)
-    #     ax1.plot(x, R, color='red')
-    #     ax1.plot(x, G, color='green')
-    #     ax1.plot(x, B, color='blue')
-    #     ax1.plot(x, y, color='gray')
-    #     ax1.set_facecolor('black')
-    #     ax1.tick_params(colors='darkgray')
-    #     ax1.spines['bottom'].set_color('darkgray')
-    #     ax1.spines['left'].set_color('darkgray')
-
-    #     # Plot 2: Horizontal intensity
-    #     x = np.arange(len(horizontal))
-    #     y = horizontal
-    #     ax2.plot(x, y, color='gray')
-    #     ax2.set_facecolor('black')
-    #     ax2.tick_params(colors='darkgray')
-    #     ax2.spines['bottom'].set_color('darkgray')
-    #     ax2.spines['left'].set_color('darkgray')
-
-    #     # Plot 3: Vertical intensity
-    #     x = vertical
-    #     y = np.arange(len(vertical))
-    #     ax3.plot(x, y, color='gray')
-    #     ax3.set_facecolor('black')
-    #     ax3.tick_params(colors='darkgray')
-    #     ax3.spines['bottom'].set_color('darkgray')
-    #     ax3.spines['left'].set_color('darkgray')
-
-    #     # Display the plots on separate canvases
-    #     for widget in self.right_frame.winfo_children():
-    #         widget.destroy()  # Clear previous plots
-
-    #     # Temporary canvas names
-    #     canvas1 = FigureCanvasTkAgg(fig1, master=self.right_frame)
-    #     canvas1.draw()
-    #     canvas1.get_tk_widget().pack(side="top", fill='both', expand=True)
-
-    #     canvas2 = FigureCanvasTkAgg(fig2, master=self.right_frame)
-    #     canvas2.draw()
-    #     canvas2.get_tk_widget().pack(side="top", fill='both', expand=True)
-
-    #     canvas3 = FigureCanvasTkAgg(fig3, master=self.right_frame)
-    #     canvas3.draw()
-    #     canvas3.get_tk_widget().pack(side="top", fill='both', expand=True)
 
     
     def prepare_plots(self):
@@ -686,5 +684,5 @@ class ImageProcessorApp:
     
 if __name__ == "__main__":
     root = ctk.CTk()
-    app = ImageProcessorApp(root)
+    app = PhotoHubApp(root)
     root.mainloop()
