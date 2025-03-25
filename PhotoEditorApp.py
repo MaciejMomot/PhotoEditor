@@ -5,12 +5,12 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-class PhotoHubApp:
+class PhotoEditorApp:
 
     def __init__(self, root):
         
         self.root = root
-        self.root.title("PhotoHub")
+        self.root.title("Photo Editor")
         self.root.geometry("850x600")
 
         ctk.set_appearance_mode("dark")  
@@ -62,13 +62,15 @@ class PhotoHubApp:
 
         self.filter_menu = ctk.CTkComboBox(self.button_frame, 
                            values=["Choose operation",
-                                "grayscale",
-                                "negative", 
-                                "binarization", 
-                                "sharpening", 
-                                "blur", 
-                                "gaussian", 
-                                "laplacian", 
+                                "Grayscale - Average",
+                                "Grayscale - Lightness",
+                                "Desaturation",
+                                "Negative", 
+                                "Binarization", 
+                                "Sharpening", 
+                                "Blur", 
+                                "Gaussian", 
+                                "Laplacian", 
                                 "Robert's cross", 
                                 "Sobel operator", 
                                 "Prewitt operator", 
@@ -272,6 +274,9 @@ class PhotoHubApp:
         elif choice == "blur":
             self.threshold = 1
             self.threshold_text = "Parameter: "
+        elif choice == "Desaturation":
+            self.threshold = 0.5
+            self.threshold_text = "Parameter: "
         else:
             self.threshold = None
             self.threshold_text = ''
@@ -293,24 +298,34 @@ class PhotoHubApp:
         
         self.processed_image_history.append(self.processed_image.copy())
         
-        if self.selected_filter == "grayscale":
+        if self.selected_filter == "Grayscale - Average":
             self.grayscale()
 
-        elif self.selected_filter == "negative":
+        elif self.selected_filter == "Negative":
             self.negative()
 
-        elif self.selected_filter == "binarization":
+        elif self.selected_filter == "Binarization":
             trigger = self.set_threshold()
             if trigger:
                 self.binarization(self.threshold)
             else: 
                 self.on_select(self.selected_filter)
                 return
+        elif self.selected_filter == "Grayscale - Lightness":
+            self.lightness()
+
+        elif self.selected_filter == "Desaturation":
+            trigger = self.set_threshold()
+            if trigger:
+                self.desaturation(self.threshold)
+            else: 
+                self.on_select(self.selected_filter)
+                return
             
-        elif self.selected_filter == "sharpening":
+        elif self.selected_filter == "Sharpening":
             self.sharpen()
 
-        elif self.selected_filter == "blur":
+        elif self.selected_filter == "Blur":
             trigger = self.set_threshold()
             if trigger:
                 self.blur(self.threshold)
@@ -318,7 +333,7 @@ class PhotoHubApp:
                 self.on_select(self.selected_filter)
                 return
             
-        elif self.selected_filter == "gaussian":
+        elif self.selected_filter == "Gaussian":
             trigger = self.set_threshold()
             if trigger:
                 self.gaussian(self.threshold)
@@ -326,7 +341,7 @@ class PhotoHubApp:
                 self.on_select(self.selected_filter)
                 return
             
-        elif self.selected_filter == "laplacian":
+        elif self.selected_filter == "Laplacian":
             self.laplacian()
 
         elif self.selected_filter == "Robert's cross":
@@ -356,25 +371,37 @@ class PhotoHubApp:
         try:
             threshold = float(self.threshold_entry.get())  
 
-            if self.selected_filter == "binarization" and 0 <= threshold <= 255:
+            if self.selected_filter == "Binarization" and 0 <= threshold <= 255:
                 self.threshold = threshold
-            elif self.selected_filter == "binarization":
+
+            elif self.selected_filter == "Binarization":
                 self.show_error_message("Please insert threshold value between 0 and 255.")
                 return False
-            elif self.selected_filter == "gaussian" and threshold > 0:
+            
+            elif self.selected_filter == "Gaussian" and threshold > 0:
                 self.threshold = threshold
-            elif self.selected_filter == "gaussian":
+
+            elif self.selected_filter == "Gaussian":
                 self.show_error_message("Please insert sigma value greater than 0.")
                 return False
-            elif self.selected_filter == "blur" and threshold > 0:
+            
+            elif self.selected_filter == "Blur" and threshold > 0:
                 try:
                     threshold = int(threshold)
                     self.threshold = threshold
                 except ValueError:
                     self.show_error_message("Please insert integer.")
                     return False
-            elif self.selected_filter == "blur":
+
+            elif self.selected_filter == "Blur":
                 self.show_error_message("Please insert threshold value greater than 0.")
+                return False
+            
+            elif self.selected_filter == "Desaturation" and 0 <= threshold <= 1:
+                self.threshold = threshold
+
+            elif self.selected_filter == "Desaturation":
+                self.show_error_message("Please insert threshold value between 0 and 1.")
                 return False
 
         except ValueError:
@@ -400,7 +427,7 @@ class PhotoHubApp:
 
     """ PIXEL OPERATIONS """
 
-    # GRAYSCALE
+    # GRAYSCALE - AVERAGE
 
     def grayscale(self):
         pixels = np.array(self.processed_image)
@@ -408,8 +435,30 @@ class PhotoHubApp:
         tmp = np.stack([grey]*3, axis=2)
         self.processed_image = Image.fromarray(tmp)
         self.display_image(self.processed_image, self.middle_label)
-        print("Grayscale applied")
+        print("Grayscale - Average applied")
 
+
+    # GRAYSCALE - LIGHTNESS
+
+    def lightness(self):
+        pixels = np.array(self.processed_image)
+        grey = (np.max(pixels, axis=2) + np.min(pixels, axis=2)) / 2
+        tmp = np.stack([grey]*3, axis=2).astype(np.uint8)
+        self.processed_image = Image.fromarray(tmp)
+        self.display_image(self.processed_image, self.middle_label)
+        print("Grayscale - Lightness applied")
+
+
+    # GRAYSCALE - DESATURATION
+
+    def desaturation(self, parameter):
+        pixels = np.array(self.processed_image)
+        grey = pixels[:, :, 0] * 0.299 + pixels[:, :, 1] * 0.587 + pixels[:, :, 2] * 0.114
+        tmp = np.stack([grey]*3, axis=2)
+        desaturated = parameter * pixels + (1 - parameter) * tmp
+        self.processed_image = Image.fromarray(desaturated.astype(np.uint8))
+        self.display_image(self.processed_image, self.middle_label)
+        print("Desaturation")
 
     # NEGATIVE
 
@@ -684,5 +733,5 @@ class PhotoHubApp:
     
 if __name__ == "__main__":
     root = ctk.CTk()
-    app = PhotoHubApp(root)
+    app = PhotoEditorApp(root)
     root.mainloop()
