@@ -15,7 +15,7 @@ class PhotoEditorApp:
 
         ctk.set_appearance_mode("dark")  
         ctk.set_default_color_theme("blue")
-
+        
         self.image = None
         self.processed_image = None
         self.current_effect = None  
@@ -146,8 +146,6 @@ class PhotoEditorApp:
 
         self.apply_kernel_button = ctk.CTkButton(self.customization_frame, text="Apply custom filter", command=self.apply_custom_filter)
         self.apply_kernel_button.grid(row=1, column=4, rowspan=3, padx=5, pady=10, sticky="ew")
-        
-        
     
     # LOADING AND SAVING IMAGES
 
@@ -179,37 +177,20 @@ class PhotoEditorApp:
             self.display_image(self.image, self.left_label)
         if self.processed_image:
             self.display_image(self.processed_image, self.middle_label)
-
-
-
+            
     def display_image(self, img, label):
-        self.root.update_idletasks()  
-
-        frame = label.master
-        frame_width = frame.winfo_width()
-        frame_height = frame.winfo_height()
-
-        if frame_width <= 1 or frame_height <= 1:
-            self.root.after(100, lambda: self.display_image(img, label))
-            return
-
+        
+        frame_width = 400
         img_ratio = img.width / img.height
-        frame_ratio = frame_width / frame_height
 
-        if img_ratio > frame_ratio:
-            new_width = int(frame_width * 0.8)
-            new_height = int(new_width / img_ratio)
-        else:
-            new_height = int(frame_height * 0.8)
-            new_width = int(new_height * img_ratio)
+        new_width = frame_width
+        new_height = int(frame_width / img_ratio)
 
         resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=resized_img, dark_image=resized_img, size=(new_width, new_height))
-
-        label.configure(image=ctk_img, text="")  
+        label.configure(image=ctk_img, text="")
         label.image = ctk_img
-        label.place(relx=0.5, rely=0.5, anchor="center")
-
+        label.pack(expand = True, anchor = "center")
 
     # RESET LABELS - CLEARING FILTERS
 
@@ -643,11 +624,11 @@ class PhotoEditorApp:
         if not any(any(value != 0 for value in row) for row in kernel):
             self.show_error_message("Please enter at least one field with a value different from zero!")
         else:
+            self.processed_image_history.append(self.processed_image.copy())
             pixels = np.array(self.processed_image)
             kernel = np.array(kernel)
             modified = self.convolve(pixels, kernel)
             self.processed_image = Image.fromarray(modified)
-            self.processed_image_history.append(self.image.copy())
             self.display_image(self.processed_image, self.middle_label)
             print("Custom filter applied:", kernel)
             
