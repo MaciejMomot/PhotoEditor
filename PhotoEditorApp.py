@@ -197,10 +197,10 @@ class PhotoEditorApp:
         frame_ratio = frame_width / frame_height
 
         if img_ratio > frame_ratio:
-            new_width = int(frame_width * 0.95)
+            new_width = int(frame_width * 0.8)
             new_height = int(new_width / img_ratio)
         else:
-            new_height = int(frame_height * 0.95)
+            new_height = int(frame_height * 0.8)
             new_width = int(new_height * img_ratio)
 
         resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
