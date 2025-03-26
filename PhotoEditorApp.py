@@ -11,7 +11,7 @@ class PhotoEditorApp:
         
         self.root = root
         self.root.title("Photo Editor")
-        self.root.geometry("850x600")
+        self.root.geometry("10000x10000")
 
         ctk.set_appearance_mode("dark")  
         ctk.set_default_color_theme("blue")
@@ -41,15 +41,14 @@ class PhotoEditorApp:
         self.middle_label = ctk.CTkLabel(self.middle_frame, text="Processed image")
         self.middle_label.pack(padx=5)
         self.right_label = ctk.CTkLabel(self.right_frame, text="Histograms")
-        self.right_label.pack(pady=10)
-        
+        self.right_label.pack(padx=5)
+
         self.left_frame.pack_propagate(False)
         self.middle_frame.pack_propagate(False)
         self.right_frame.pack_propagate(False)
 
         self.left_frame.bind("<Configure>", lambda event: self.on_resize())
         self.middle_frame.bind("<Configure>", lambda event: self.on_resize())
-        self.right_frame.bind("<Configure>", lambda event: self.on_resize())
 
         self.button_frame = ctk.CTkFrame(root)
         self.button_frame.pack(pady=10)
@@ -146,7 +145,12 @@ class PhotoEditorApp:
 
         self.apply_kernel_button = ctk.CTkButton(self.customization_frame, text="Apply custom filter", command=self.apply_custom_filter)
         self.apply_kernel_button.grid(row=1, column=4, rowspan=3, padx=5, pady=10, sticky="ew")
+<<<<<<< HEAD
+        
+        
+=======
     
+>>>>>>> 2c1ff323d3e9df9142b05199937517dc60c8d638
     # LOADING AND SAVING IMAGES
 
     def load_image(self):
@@ -160,6 +164,7 @@ class PhotoEditorApp:
             self.display_image(self.processed_image, self.middle_label)
             self.reset_labels()
             self.prepare_plots()
+
 
     def save_image(self):
         if self.processed_image:
@@ -177,6 +182,23 @@ class PhotoEditorApp:
             self.display_image(self.image, self.left_label)
         if self.processed_image:
             self.display_image(self.processed_image, self.middle_label)
+<<<<<<< HEAD
+
+
+    def display_image(self, img, label):
+        self.root.update_idletasks()
+
+        frame_width = label.master.winfo_width() - 160  # padding
+        frame_height = label.master.winfo_height() - 160  # padding
+
+        ratio = img.width / img.height
+        if frame_width / frame_height > ratio:
+            new_height = frame_height
+            new_width = int(frame_height * ratio)
+        else:
+            new_width = frame_width
+            new_height = int(frame_width / ratio)
+=======
             
     def display_image(self, img, label):
         
@@ -185,12 +207,21 @@ class PhotoEditorApp:
 
         new_width = frame_width
         new_height = int(frame_width / img_ratio)
+>>>>>>> 2c1ff323d3e9df9142b05199937517dc60c8d638
 
-        resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        resized_img = img.resize((new_width, new_height), Image.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=resized_img, dark_image=resized_img, size=(new_width, new_height))
+<<<<<<< HEAD
+
+        label.configure(image=ctk_img, text="")
+        label.image = ctk_img
+        label.pack(expand=True, anchor="center")
+
+=======
         label.configure(image=ctk_img, text="")
         label.image = ctk_img
         label.pack(expand = True, anchor = "center")
+>>>>>>> 2c1ff323d3e9df9142b05199937517dc60c8d638
 
     # RESET LABELS - CLEARING FILTERS
 
@@ -246,13 +277,13 @@ class PhotoEditorApp:
 
     def on_select(self, choice):
         self.selected_filter = choice
-        if choice == "binarization":
+        if choice == "Binarization":
             self.threshold = 128
             self.threshold_text = "Threshold: "
-        elif choice == "gaussian":
+        elif choice == "Gaussian":
             self.threshold = 1
             self.threshold_text = "Sigma: "
-        elif choice == "blur":
+        elif choice == "Blur":
             self.threshold = 1
             self.threshold_text = "Parameter: "
         elif choice == "Desaturation":
@@ -624,8 +655,12 @@ class PhotoEditorApp:
         if not any(any(value != 0 for value in row) for row in kernel):
             self.show_error_message("Please enter at least one field with a value different from zero!")
         else:
+<<<<<<< HEAD
+            pixels = np.array(self.processed_image.copy())
+=======
             self.processed_image_history.append(self.processed_image.copy())
             pixels = np.array(self.processed_image)
+>>>>>>> 2c1ff323d3e9df9142b05199937517dc60c8d638
             kernel = np.array(kernel)
             modified = self.convolve(pixels, kernel)
             self.processed_image = Image.fromarray(modified)
@@ -686,6 +721,7 @@ class PhotoEditorApp:
         ax1.tick_params(colors='darkgray')
         ax1.spines['bottom'].set_color('darkgray')
         ax1.spines['left'].set_color('darkgray')
+        ax1.set_title('RGB and Grayscale histograms', color='darkgray')
 
         # Plot 2
         ax2 = fig.add_subplot(gs[2, 0:2])
@@ -695,6 +731,7 @@ class PhotoEditorApp:
         ax2.tick_params(colors='darkgray')
         ax2.spines['bottom'].set_color('darkgray')
         ax2.spines['left'].set_color('darkgray')
+        ax2.set_title('Horizontal projection', color='darkgray')
 
         # Plot 3
         ax3 = fig.add_subplot(gs[0:2, 2])
@@ -704,6 +741,9 @@ class PhotoEditorApp:
         ax3.tick_params(colors='darkgray')
         ax3.spines['bottom'].set_color('darkgray')
         ax3.spines['left'].set_color('darkgray')
+        ax3.set_title('Vertical projection', color='darkgray')
+
+        fig.tight_layout(pad=8.0)
 
         for widget in self.right_frame.winfo_children():
             widget.destroy()
