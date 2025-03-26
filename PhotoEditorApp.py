@@ -12,6 +12,7 @@ class PhotoEditorApp:
         self.root = root
         self.root.title("Photo Editor")
         self.root.geometry("850x600")
+        self.root.protocol("WM_DELETE_WINDOW", self.cleanup)
 
         ctk.set_appearance_mode("dark")  
         ctk.set_default_color_theme("blue")
@@ -174,10 +175,27 @@ class PhotoEditorApp:
     # DISPLAYING IMAGES
 
     def on_resize(self):
-        if self.image:
+        if self.image and self.left_label.winfo_exists():
             self.display_image(self.image, self.left_label)
-        if self.processed_image:
+        if self.processed_image and self.middle_label.winfo_exists():
             self.display_image(self.processed_image, self.middle_label)
+
+    def cleanup(self):
+
+        for widget in self.left_frame.winfo_children():
+            widget.destroy()
+        for widget in self.middle_frame.winfo_children():
+            widget.destroy()
+        for widget in self.right_frame.winfo_children():
+            widget.destroy()
+        try:
+            tasks = self.root.tk.call("after", "info")
+            for task in tasks.split():
+                self.root.after_cancel(task)
+        except Exception:
+            pass
+
+        self.root.destroy()
 
 
     def display_image(self, img, label):
@@ -185,6 +203,9 @@ class PhotoEditorApp:
 
         frame_width = label.master.winfo_width() - 160  # padding
         frame_height = label.master.winfo_height() - 160  # padding
+
+        if frame_width <= 0 or frame_height <= 0:
+            return
 
         ratio = img.width / img.height
         if frame_width / frame_height > ratio:
@@ -634,11 +655,13 @@ class PhotoEditorApp:
         if not any(any(value != 0 for value in row) for row in kernel):
             self.show_error_message("Please enter at least one field with a value different from zero!")
         else:
-            pixels = np.array(self.processed_image.copy())
+            self.processed_image_history.append(self.processed_image.copy())
+            pixels = np.array(self.processed_image)
             kernel = np.array(kernel)
             modified = self.convolve(pixels, kernel)
             self.processed_image = Image.fromarray(modified)
             self.display_image(self.processed_image, self.middle_label)
+            self.prepare_plots()
             print("Custom filter applied:", kernel)
             
             # Reset the kernel input fields to "0"
@@ -674,6 +697,10 @@ class PhotoEditorApp:
 
     
     def prepare_plots(self):
+
+        if not self.right_frame.winfo_exists():
+            return
+
         if self.processed_image is None:
             return
 
