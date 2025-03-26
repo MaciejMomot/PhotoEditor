@@ -722,7 +722,7 @@ class PhotoEditorApp:
         ax1.tick_params(colors='darkgray')
         ax1.spines['bottom'].set_color('darkgray')
         ax1.spines['left'].set_color('darkgray')
-        ax1.set_title('RGB and Grayscale histograms', color='darkgray')
+        ax1.set_title('RGB and Grayscale distribution', color='darkgray')
 
         # Plot 2
         ax2 = fig.add_subplot(gs[2, 0:2])
