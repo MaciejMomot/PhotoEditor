@@ -11,7 +11,7 @@ class PhotoEditorApp:
         
         self.root = root
         self.root.title("Photo Editor")
-        self.root.geometry("10000x10000")
+        self.root.geometry("850x600")
 
         ctk.set_appearance_mode("dark")  
         ctk.set_default_color_theme("blue")
@@ -145,12 +145,8 @@ class PhotoEditorApp:
 
         self.apply_kernel_button = ctk.CTkButton(self.customization_frame, text="Apply custom filter", command=self.apply_custom_filter)
         self.apply_kernel_button.grid(row=1, column=4, rowspan=3, padx=5, pady=10, sticky="ew")
-<<<<<<< HEAD
         
         
-=======
-    
->>>>>>> 2c1ff323d3e9df9142b05199937517dc60c8d638
     # LOADING AND SAVING IMAGES
 
     def load_image(self):
@@ -182,7 +178,6 @@ class PhotoEditorApp:
             self.display_image(self.image, self.left_label)
         if self.processed_image:
             self.display_image(self.processed_image, self.middle_label)
-<<<<<<< HEAD
 
 
     def display_image(self, img, label):
@@ -198,30 +193,14 @@ class PhotoEditorApp:
         else:
             new_width = frame_width
             new_height = int(frame_width / ratio)
-=======
-            
-    def display_image(self, img, label):
-        
-        frame_width = 400
-        img_ratio = img.width / img.height
-
-        new_width = frame_width
-        new_height = int(frame_width / img_ratio)
->>>>>>> 2c1ff323d3e9df9142b05199937517dc60c8d638
 
         resized_img = img.resize((new_width, new_height), Image.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=resized_img, dark_image=resized_img, size=(new_width, new_height))
-<<<<<<< HEAD
 
         label.configure(image=ctk_img, text="")
         label.image = ctk_img
         label.pack(expand=True, anchor="center")
 
-=======
-        label.configure(image=ctk_img, text="")
-        label.image = ctk_img
-        label.pack(expand = True, anchor = "center")
->>>>>>> 2c1ff323d3e9df9142b05199937517dc60c8d638
 
     # RESET LABELS - CLEARING FILTERS
 
@@ -655,12 +634,7 @@ class PhotoEditorApp:
         if not any(any(value != 0 for value in row) for row in kernel):
             self.show_error_message("Please enter at least one field with a value different from zero!")
         else:
-<<<<<<< HEAD
             pixels = np.array(self.processed_image.copy())
-=======
-            self.processed_image_history.append(self.processed_image.copy())
-            pixels = np.array(self.processed_image)
->>>>>>> 2c1ff323d3e9df9142b05199937517dc60c8d638
             kernel = np.array(kernel)
             modified = self.convolve(pixels, kernel)
             self.processed_image = Image.fromarray(modified)
