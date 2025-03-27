@@ -726,23 +726,23 @@ class PhotoEditorApp:
 
         # Plot 2
         ax2 = fig.add_subplot(gs[2, 0:2])
-        x = np.arange(len(horizontal))
-        ax2.plot(x, horizontal, color='gray')
+        x = np.arange(len(vertical))
+        ax2.plot(x, vertical, color='gray')
         ax2.set_facecolor('black')
         ax2.tick_params(colors='darkgray')
         ax2.spines['bottom'].set_color('darkgray')
         ax2.spines['left'].set_color('darkgray')
-        ax2.set_title('Horizontal projection', color='darkgray')
+        ax2.set_title('Vertical projection', color='darkgray')
 
         # Plot 3
         ax3 = fig.add_subplot(gs[0:2, 2])
-        y = np.arange(len(vertical))
-        ax3.plot(vertical, y, color='gray')
+        y = np.arange(len(horizontal))
+        ax3.plot(horizontal, y, color='gray')
         ax3.set_facecolor('black')
         ax3.tick_params(colors='darkgray')
         ax3.spines['bottom'].set_color('darkgray')
         ax3.spines['left'].set_color('darkgray')
-        ax3.set_title('Vertical projection', color='darkgray')
+        ax3.set_title('Horizontal projection', color='darkgray')
 
         fig.tight_layout(pad=8.0)
 
