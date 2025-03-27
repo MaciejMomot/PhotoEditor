@@ -12,7 +12,6 @@ class PhotoEditorApp:
         self.root = root
         self.root.title("Photo Editor")
         self.root.geometry("850x600")
-        self.root.protocol("WM_DELETE_WINDOW", self.cleanup)
 
         ctk.set_appearance_mode("dark")  
         ctk.set_default_color_theme("blue")
@@ -155,6 +154,11 @@ class PhotoEditorApp:
         if file_path:
             self.image = Image.open(file_path).convert("RGB")
             self.processed_image = self.image.copy()
+            self.processed_image_history = []
+            self.brightness_value = 0
+            self.contrast_value = 0
+            self.brightness_scale.set(0)
+            self.contrast_scale.set(0)
             self.processed_image_history.append(self.image.copy())
             self.current_effect = self.image.copy()
             self.display_image(self.image, self.left_label)
@@ -179,23 +183,6 @@ class PhotoEditorApp:
             self.display_image(self.image, self.left_label)
         if self.processed_image and self.middle_label.winfo_exists():
             self.display_image(self.processed_image, self.middle_label)
-
-    def cleanup(self):
-
-        for widget in self.left_frame.winfo_children():
-            widget.destroy()
-        for widget in self.middle_frame.winfo_children():
-            widget.destroy()
-        for widget in self.right_frame.winfo_children():
-            widget.destroy()
-        try:
-            tasks = self.root.tk.call("after", "info")
-            for task in tasks.split():
-                self.root.after_cancel(task)
-        except Exception:
-            pass
-
-        self.root.destroy()
 
 
     def display_image(self, img, label):
@@ -670,30 +657,41 @@ class PhotoEditorApp:
                     entry.delete(0, "end")
                     entry.insert(0, "0")
 
-    """ PLOTTING """
 
+    """ PLOTTING """
     
     def prepare_plot_data(self):
 
         pixels = np.array(self.processed_image)
         grey = np.mean(pixels, axis=2).astype(np.uint8)
-        vertical = np.zeros(pixels.shape[0])
-        horizontal = np.zeros(pixels.shape[1])
         R = np.zeros(256)
         G = np.zeros(256)
         B = np.zeros(256)
         K = np.zeros(256)
 
-        for i in range(pixels.shape[0]):
-            for j in range(pixels.shape[1]):
-                vertical[i] += grey[i, j]
-                horizontal[j] += grey[i, j]
-                R[pixels[i, j, 0]] += 1
-                G[pixels[i, j, 1]] += 1
-                B[pixels[i, j, 2]] += 1
-                K[grey[i, j]] += 1
+        is_binary = np.all((grey == 0) | (grey == 255))
 
-        return R, G, B, K, vertical, horizontal
+        if is_binary:
+            vertical = np.sum(grey == 0, axis=0)
+            horizontal = np.sum(grey == 0, axis=1)
+
+            for i in range(256):
+                R[i] = np.sum(pixels[:, :, 0] == i)
+                G[i] = np.sum(pixels[:, :, 1] == i)
+                B[i] = np.sum(pixels[:, :, 2] == i)
+                K[i] = np.sum(grey == i)
+
+            return R, G, B, K, vertical, horizontal
+
+        else:
+
+            for i in range(256):
+                R[i] = np.sum(pixels[:, :, 0] == i)
+                G[i] = np.sum(pixels[:, :, 1] == i)
+                B[i] = np.sum(pixels[:, :, 2] == i)
+                K[i] = np.sum(grey == i)
+
+            return R, G, B, K, None, None
 
     
     def prepare_plots(self):
@@ -706,45 +704,60 @@ class PhotoEditorApp:
 
         R, G, B, K, vertical, horizontal = self.prepare_plot_data()
 
-
         fig = plt.figure(figsize=(15, 15)) 
         fig.patch.set_facecolor('black')
-        gs = fig.add_gridspec(3, 3) 
 
-        # Plot 1
-        ax1 = fig.add_subplot(gs[0:2, 0:2])
-        x = np.arange(256)
-        ax1.plot(x, R, color='red')
-        ax1.plot(x, G, color='green')
-        ax1.plot(x, B, color='blue')
-        ax1.plot(x, K, color='gray')
-        ax1.set_facecolor('black')
-        ax1.tick_params(colors='darkgray')
-        ax1.spines['bottom'].set_color('darkgray')
-        ax1.spines['left'].set_color('darkgray')
-        ax1.set_title('RGB and Grayscale distribution', color='darkgray')
+        if vertical is None or horizontal is None:
+            # Only RGBK histogram
+            ax1 = fig.add_subplot(111)
+            x = np.arange(256)
+            ax1.plot(x, R, color='red')
+            ax1.plot(x, G, color='green')
+            ax1.plot(x, B, color='blue')
+            ax1.plot(x, K, color='gray')
+            ax1.set_facecolor('black')
+            ax1.tick_params(colors='darkgray')
+            ax1.spines['bottom'].set_color('darkgray')
+            ax1.spines['left'].set_color('darkgray')
+            ax1.set_title('RGB and Grayscale distribution', color='darkgray')
+        else:
 
-        # Plot 2
-        ax2 = fig.add_subplot(gs[2, 0:2])
-        x = np.arange(len(vertical))
-        ax2.plot(x, vertical, color='gray')
-        ax2.set_facecolor('black')
-        ax2.tick_params(colors='darkgray')
-        ax2.spines['bottom'].set_color('darkgray')
-        ax2.spines['left'].set_color('darkgray')
-        ax2.set_title('Vertical projection', color='darkgray')
+            gs = fig.add_gridspec(3, 3)
 
-        # Plot 3
-        ax3 = fig.add_subplot(gs[0:2, 2])
-        y = np.arange(len(horizontal))
-        ax3.plot(horizontal, y, color='gray')
-        ax3.set_facecolor('black')
-        ax3.tick_params(colors='darkgray')
-        ax3.spines['bottom'].set_color('darkgray')
-        ax3.spines['left'].set_color('darkgray')
-        ax3.set_title('Horizontal projection', color='darkgray')
+            # Plot 1
+            ax1 = fig.add_subplot(gs[0:2, 0:2])
+            x = np.arange(256)
+            ax1.plot(x, R, color='red')
+            ax1.plot(x, G, color='green')
+            ax1.plot(x, B, color='blue')
+            ax1.plot(x, K, color='gray')
+            ax1.set_facecolor('black')
+            ax1.tick_params(colors='darkgray')
+            ax1.spines['bottom'].set_color('darkgray')
+            ax1.spines['left'].set_color('darkgray')
+            ax1.set_title('RGB and Grayscale distribution', color='darkgray')
 
-        fig.tight_layout(pad=8.0)
+            # Plot 2
+            ax2 = fig.add_subplot(gs[2, 0:2])
+            x = np.arange(len(vertical))
+            ax2.plot(x, vertical, color='gray')
+            ax2.set_facecolor('black')
+            ax2.tick_params(colors='darkgray')
+            ax2.spines['bottom'].set_color('darkgray')
+            ax2.spines['left'].set_color('darkgray')
+            ax2.set_title('Vertical projection', color='darkgray')
+
+            # Plot 3
+            ax3 = fig.add_subplot(gs[0:2, 2])
+            y = np.arange(len(horizontal))
+            ax3.plot(horizontal[::-1], y, color='gray')
+            ax3.set_facecolor('black')
+            ax3.tick_params(colors='darkgray')
+            ax3.spines['bottom'].set_color('darkgray')
+            ax3.spines['left'].set_color('darkgray')
+            ax3.set_title('Horizontal projection', color='darkgray')
+
+            fig.tight_layout(pad=8.0)
 
         for widget in self.right_frame.winfo_children():
             widget.destroy()
